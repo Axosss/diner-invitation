@@ -1,0 +1,17 @@
+{
+  "name": "diner-invitation",
+  "version": "1.0.0",
+  "description": "Interactive dinner invitation with envelope animation",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python3 -m http.server 8080",
+    "preview": "python3 -m http.server 8080"
+  },
+  "keywords": [
+    "invitation",
+    "envelope",
+    "animation"
+  ],
+  "author": "",
+  "license": "ISC"
+}
