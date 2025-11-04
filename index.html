@@ -1363,6 +1363,12 @@
         let sealBackTimeout = null;
         let sealBackHidden = false;
 
+        // Web Audio API pour iOS Safari
+        let audioContext = null;
+        let audioSource = null;
+        let gainNode = null;
+        let audioElement = null;
+
         // ===== CONFETTI ANIMATIONS =====
 
         // Animation: Explosion CSS Pure
@@ -1507,6 +1513,69 @@
 
         // ===== END RAIN EFFECT =====
 
+        // ===== WEB AUDIO API SETUP =====
+        function initAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                audioElement = document.getElementById('backgroundMusic');
+                audioSource = audioContext.createMediaElementSource(audioElement);
+                gainNode = audioContext.createGain();
+
+                // Connecter : source -> gain -> destination
+                audioSource.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                // Volume initial à 0
+                gainNode.gain.value = 0;
+            }
+        }
+
+        function playMusicWithFadeIn() {
+            initAudioContext();
+
+            // S'assurer que le contexte audio est débloqué (iOS)
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            const audio = document.getElementById('backgroundMusic');
+
+            const startMusic = () => {
+                audio.currentTime = 43;
+
+                audio.play().then(() => {
+                    musicPlaying = true;
+
+                    // Fade-in avec Web Audio API (compatible iOS)
+                    const fadeInDuration = 10; // 10 secondes
+                    const currentTime = audioContext.currentTime;
+
+                    gainNode.gain.cancelScheduledValues(currentTime);
+                    gainNode.gain.setValueAtTime(0, currentTime);
+                    gainNode.gain.linearRampToValueAtTime(1, currentTime + fadeInDuration);
+
+                }).catch(err => {
+                    console.log('Autoplay bloqué:', err);
+                    musicPlaying = false;
+                    document.getElementById('playPauseIcon').innerHTML = '<div class="play-triangle"></div>';
+                });
+            };
+
+            if (audio.readyState >= 2) {
+                startMusic();
+            } else {
+                audio.addEventListener('loadedmetadata', startMusic, { once: true });
+            }
+        }
+
+        function pauseMusic() {
+            const audio = document.getElementById('backgroundMusic');
+            audio.pause();
+            musicPlaying = false;
+        }
+
+        // ===== END WEB AUDIO API =====
+
         // Fonction pour générer le fichier iCalendar
         function generateICS() {
             const events = [
@@ -1647,9 +1716,7 @@
                 });
 
                 navigator.mediaSession.setActionHandler('play', () => {
-                    const audio = document.getElementById('backgroundMusic');
-                    audio.play();
-                    musicPlaying = true;
+                    playMusicWithFadeIn();
                     document.getElementById('playPauseIcon').innerHTML = `
                         <div class="pause-bars">
                             <div class="pause-bar"></div>
@@ -1659,9 +1726,7 @@
                 });
 
                 navigator.mediaSession.setActionHandler('pause', () => {
-                    const audio = document.getElementById('backgroundMusic');
-                    audio.pause();
-                    musicPlaying = false;
+                    pauseMusic();
                     document.getElementById('playPauseIcon').innerHTML = '<div class="play-triangle"></div>';
                 });
             }
@@ -1669,59 +1734,21 @@
 
         // Fonction pour toggle la musique
         function toggleMusic() {
-            const audio = document.getElementById('backgroundMusic');
             const playPauseIcon = document.getElementById('playPauseIcon');
 
             if (musicPlaying) {
                 // Pause la musique
-                audio.pause();
-                musicPlaying = false;
+                pauseMusic();
                 playPauseIcon.innerHTML = '<div class="play-triangle"></div>';
             } else {
                 // Démarrer à 43 secondes avec fade-in
-                audio.volume = 0;
-
-                const startMusic = () => {
-                    audio.currentTime = 43;
-
-                    // Play la musique
-                    audio.play().catch(err => {
-                        console.log('Erreur lors de la lecture:', err);
-                    });
-
-                    // Fade-in de 10 secondes (0% à 100%)
-                    const fadeInDuration = 10000; // 10 secondes en millisecondes
-                    const fadeInSteps = 50; // Nombre d'étapes pour le fade-in
-                    const stepDuration = fadeInDuration / fadeInSteps;
-                    const volumeIncrement = 1 / fadeInSteps;
-
-                    let currentStep = 0;
-                    const fadeInInterval = setInterval(() => {
-                        currentStep++;
-                        audio.volume = Math.min(currentStep * volumeIncrement, 1);
-
-                        if (currentStep >= fadeInSteps) {
-                            clearInterval(fadeInInterval);
-                            audio.volume = 1;
-                        }
-                    }, stepDuration);
-
-                    musicPlaying = true;
-                    playPauseIcon.innerHTML = `
-                        <div class="pause-bars">
-                            <div class="pause-bar"></div>
-                            <div class="pause-bar"></div>
-                        </div>
-                    `;
-                };
-
-                if (audio.readyState >= 2) {
-                    // Audio déjà chargé
-                    startMusic();
-                } else {
-                    // Attendre que l'audio soit chargé
-                    audio.addEventListener('loadedmetadata', startMusic, { once: true });
-                }
+                playMusicWithFadeIn();
+                playPauseIcon.innerHTML = `
+                    <div class="pause-bars">
+                        <div class="pause-bar"></div>
+                        <div class="pause-bar"></div>
+                    </div>
+                `;
             }
         }
 
@@ -1746,44 +1773,8 @@
             controlButtons.classList.add('visible');
             musicButton.classList.add('enabled');
 
-            // Démarrer la musique immédiatement à 43 secondes avec fade-in
-            audio.volume = 0;
-
-            const startMusic = () => {
-                audio.currentTime = 43;
-                audio.play().then(() => {
-                    musicPlaying = true;
-
-                    // Fade-in de 10 secondes (0% à 100%)
-                    const fadeInDuration = 10000; // 10 secondes en millisecondes
-                    const fadeInSteps = 50; // Nombre d'étapes pour le fade-in
-                    const stepDuration = fadeInDuration / fadeInSteps;
-                    const volumeIncrement = 1 / fadeInSteps;
-
-                    let currentStep = 0;
-                    const fadeInInterval = setInterval(() => {
-                        currentStep++;
-                        audio.volume = Math.min(currentStep * volumeIncrement, 1);
-
-                        if (currentStep >= fadeInSteps) {
-                            clearInterval(fadeInInterval);
-                            audio.volume = 1;
-                        }
-                    }, stepDuration);
-                }).catch(err => {
-                    console.log('Autoplay bloqué');
-                    musicPlaying = false;
-                    document.getElementById('playPauseIcon').innerHTML = '<div class="play-triangle"></div>';
-                });
-            };
-
-            if (audio.readyState >= 2) {
-                // Audio déjà chargé
-                startMusic();
-            } else {
-                // Attendre que l'audio soit chargé
-                audio.addEventListener('loadedmetadata', startMusic, { once: true });
-            }
+            // Démarrer la musique immédiatement avec Web Audio API (compatible iOS)
+            playMusicWithFadeIn();
 
             // Flip l'enveloppe
             setTimeout(() => {
