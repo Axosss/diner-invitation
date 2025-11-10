@@ -20,6 +20,14 @@
   <meta name="twitter:image" content="https://valentinis.netlify.app/src/assets/images/og-image.jpg">
 
   <style>
+    /* Fonts */
+    @font-face {
+      font-family: 'Monsieur La Doulaise';
+      src: url('./src/assets/fonts/MonsieurLaDoulaise-Regular.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+
     /* Reset and base styles */
     * {
       box-sizing: border-box;
@@ -121,7 +129,7 @@
     /* Text on back of envelope */
     .envelope-back-text {
       text-align: center;
-      font-family: Arial, sans-serif;
+      font-family: 'Monsieur La Doulaise', cursive;
       font-size: 60px;
       font-weight: 300;
       color: rgba(160, 120, 130, 0.6);
@@ -641,6 +649,21 @@
       animation: subtle-pulse 3s ease-in-out infinite;
     }
 
+    .maps-button {
+      display: none;
+      padding: 12px 20px;
+      font-size: 16px;
+    }
+
+    .maps-button .button-text-short {
+      min-width: auto;
+      width: auto;
+    }
+
+    .maps-button.visible {
+      display: flex;
+    }
+
     @keyframes subtle-pulse {
       0%, 100% {
         transform: scale(1);
@@ -980,6 +1003,16 @@
         width: auto;
       }
 
+      .maps-button {
+        padding: 10px 19px;
+        font-size: 13px;
+      }
+
+      .maps-button .button-text-short {
+        min-width: auto;
+        width: auto;
+      }
+
       .button-text-short {
         display: inline;
       }
@@ -993,12 +1026,43 @@
         padding: 8px 16px;
       }
     }
+
+    /* Rain effect - Ice cubes */
+    .rain-piece {
+      position: fixed;
+      pointer-events: none;
+      z-index: -1;
+      opacity: 0.8;
+    }
+
+    .rain-piece img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    @keyframes rain-fall {
+      0% {
+        transform: translateY(-500px) rotate(0deg);
+        opacity: 0;
+      }
+      5% {
+        opacity: 0.8;
+      }
+      95% {
+        opacity: 0.8;
+      }
+      100% {
+        transform: translateY(calc(100vh + 200px)) rotate(360deg);
+        opacity: 0;
+      }
+    }
   </style>
 </head>
 <body>
   <!-- Background music -->
   <audio id="backgroundMusic" loop>
-    <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_ba0c25972f.mp3?filename=paper-flip-2-102220.mp3" type="audio/mpeg">
+    <source src="./src/assets/audio/background-music.mp3" type="audio/mpeg">
   </audio>
 
   <!-- Envelope open sound -->
@@ -1043,6 +1107,13 @@
       <span class="calendar-icon">📅</span>
       <span class="button-text-full">Add to Calendar</span>
       <span class="button-text-short">+</span>
+    </button>
+
+    <!-- Get there button -->
+    <button class="control-button maps-button" id="getThereButton">
+      <span class="calendar-icon">📍</span>
+      <span class="button-text-full">Maps</span>
+      <span class="button-text-short">Maps</span>
     </button>
   </div>
 
@@ -1100,6 +1171,12 @@
                       font-weight: bold;
                       font-style: normal;
                     }
+                    @font-face {
+                      font-family: 'Monsieur La Doulaise';
+                      src: url('./src/assets/fonts/MonsieurLaDoulaise-Regular.ttf') format('truetype');
+                      font-weight: normal;
+                      font-style: normal;
+                    }
                     .st0 { fill: url(#cardTextureFront); }
                     .st1 { font-size: 7px; letter-spacing: .2em; font-family: 'SF Pro Text', sans-serif; font-weight: normal; }
                     .st1, .st2, .st3, .st5, .st6, .st7 { fill: #fff; }
@@ -1109,7 +1186,7 @@
                     .st10 { fill: #231f20; }
                     .st5 { font-size: 10px; letter-spacing: .2em; font-family: 'SF Pro Text', sans-serif; font-weight: normal; }
                     .st13 { fill: #3a2517; }
-                    .st6 { font-size: 24.9px; font-family: 'Minion Pro', serif; font-weight: normal; }
+                    .st6 { font-size: 24.9px; font-family: 'Monsieur La Doulaise', cursive; font-weight: normal; }
                     .st7 { font-size: 26.8px; font-family: 'Minion Pro', serif; font-weight: normal; }
                   </style>
                 </defs>
@@ -1209,6 +1286,69 @@
     let sealBackTimeout = null;
     let sealBackHidden = false;
 
+    // ===== RAIN EFFECT - COCKTAILS =====
+    const rainImages = [
+      './src/assets/images/vale/emojis.com espresso-martini.webp',
+      './src/assets/images/vale/emojis.com ice-cube.webp',
+      './src/assets/images/vale/emojis.com martini-glass.webp',
+      './src/assets/images/vale/emojis.com silver-coloured-cocktail-in-martini-glass.webp',
+      './src/assets/images/vale/emojis.com sparkling-champagne-glass.webp',
+      './src/assets/images/vale/emojis.com gold-disco-ball.webp',
+      './src/assets/images/vale/emojis.com music.webp',
+      './src/assets/images/vale/disc.png',
+      './src/assets/images/vale/emojis.com silver-disco-ball.webp',
+      './src/assets/images/vale/emojis.com yorkshire-terrier-dog.webp'
+    ];
+    let rainInterval = null;
+    let currentRainIndex = 0;
+
+    function createRainPiece() {
+      const piece = document.createElement('div');
+      piece.className = 'rain-piece';
+
+      // Sélectionner l'image suivante dans l'ordre
+      const selectedImage = rainImages[currentRainIndex];
+      currentRainIndex = (currentRainIndex + 1) % rainImages.length;
+
+      const img = document.createElement('img');
+      img.src = selectedImage;
+      piece.appendChild(img);
+
+      // Taille fixe constante
+      const size = 80;
+      piece.style.width = size + 'px';
+      piece.style.height = size + 'px';
+
+      // Position horizontale aléatoire
+      piece.style.left = Math.random() * 100 + '%';
+
+      // Durée aléatoire de chute
+      const duration = 8 + Math.random() * 6; // Entre 8 et 14 secondes
+      piece.style.animation = `rain-fall ${duration}s linear forwards`;
+
+      document.body.appendChild(piece);
+
+      // Supprimer l'élément après l'animation
+      setTimeout(() => {
+        piece.remove();
+      }, duration * 1000);
+    }
+
+    function startRainEffect() {
+      // Créer une nouvelle pièce toutes les 1500ms
+      rainInterval = setInterval(() => {
+        createRainPiece();
+      }, 1500);
+    }
+
+    function stopRainEffect() {
+      if (rainInterval) {
+        clearInterval(rainInterval);
+        rainInterval = null;
+      }
+    }
+    // ===== END RAIN EFFECT =====
+
     // Fonction pour générer le fichier iCalendar
     function generateICS() {
       const events = [
@@ -1269,6 +1409,7 @@
     function toggleCardFlip() {
       const card = document.getElementById('flipCardValentina');
       const calendarButton = document.getElementById('addToCalendarButton');
+      const getThereButton = document.getElementById('getThereButton');
       const sealBack = document.querySelector('.wax-seal-back');
 
       card.classList.toggle('flipped');
@@ -1283,10 +1424,12 @@
         sealBack.style.setProperty('opacity', '0', 'important');
       }
 
-      // Afficher le bouton Calendar au premier flip
+      // Afficher les boutons Calendar et Get there au premier flip
       if (card.classList.contains('flipped')) {
         calendarButton.classList.add('visible');
         calendarButton.classList.add('enabled');
+        getThereButton.classList.add('visible');
+        getThereButton.classList.add('enabled');
 
         // Afficher le tooltip dès que le bouton apparaît
         setTimeout(() => {
@@ -1461,6 +1604,11 @@
           hasFlipped = true;
         }
       }, 11000);
+
+      // Démarrer l'effet rain 3 secondes après le flip auto (à 14 secondes)
+      setTimeout(() => {
+        startRainEffect();
+      }, 14000);
     }
 
     // Initialisation au chargement de la page
@@ -1493,6 +1641,13 @@
       addToCalendarButton.addEventListener('click', (e) => {
         e.stopPropagation();
         downloadICS();
+      });
+
+      // Ajouter l'événement au bouton "Get there"
+      const getThereButton = document.getElementById('getThereButton');
+      getThereButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        window.open('https://www.google.com/maps/search/?api=1&query=Le+Sand,7+Rue+Rouget+de+Lisle,75001+Paris', '_blank');
       });
     });
   </script>
