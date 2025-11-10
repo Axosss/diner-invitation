@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Effects Demo - Rain & Falling Particles</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+      color: #fff;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .header {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 30px;
+      text-align: center;
+      backdrop-filter: blur(10px);
+      border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .header h1 {
+      font-size: 2.5em;
+      margin-bottom: 10px;
+      background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header p {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 1.1em;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+      padding: 30px;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .effect-button {
+      padding: 15px 30px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      border-radius: 50px;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .effect-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+
+    .effect-button:active {
+      transform: translateY(0);
+    }
+
+    .effect-button.active {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      box-shadow: 0 6px 20px rgba(245, 87, 108, 0.6);
+    }
+
+    .effect-button::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+
+    .effect-button:hover::before {
+      width: 300px;
+      height: 300px;
+    }
+
+    .effect-button span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .info-panel {
+      max-width: 900px;
+      margin: 30px auto;
+      padding: 25px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 15px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .info-panel h2 {
+      margin-bottom: 15px;
+      color: #4ecdc4;
+    }
+
+    .info-panel p {
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .info-panel .tech-specs {
+      margin-top: 15px;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+    }
+
+    .stop-all {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%) !important;
+      font-weight: 700;
+    }
+
+    .links {
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .links a {
+      color: #4ecdc4;
+      text-decoration: none;
+      margin: 0 15px;
+      font-size: 14px;
+      transition: color 0.3s;
+    }
+
+    .links a:hover {
+      color: #ff6b6b;
+    }
+
+    /* Canvas for effects */
+    #effectCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .content {
+      position: relative;
+      z-index: 2;
+    }
+
+    /* Snow effect */
+    .snowflake {
+      position: fixed;
+      top: -10px;
+      color: white;
+      font-size: 1em;
+      pointer-events: none;
+      z-index: 1000;
+      animation: fall linear forwards;
+      opacity: 0.8;
+    }
+
+    @keyframes fall {
+      to {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0;
+      }
+    }
+
+    /* Confetti */
+    .confetti-piece {
+      position: fixed;
+      pointer-events: none;
+      z-index: 1000;
+      animation: confetti-fall linear forwards;
+    }
+
+    @keyframes confetti-fall {
+      0% {
+        transform: translateY(-100px) rotate(0deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(100vh) rotate(720deg);
+        opacity: 0;
+      }
+    }
+
+    /* Sakura/Petals */
+    .petal {
+      position: fixed;
+      pointer-events: none;
+      z-index: 1000;
+      opacity: 0.9;
+      animation: petal-fall ease-in-out forwards;
+    }
+
+    @keyframes petal-fall {
+      0% {
+        transform: translateY(-20px) rotate(0deg) translateX(0);
+      }
+      50% {
+        transform: translateY(50vh) rotate(180deg) translateX(100px);
+      }
+      100% {
+        transform: translateY(100vh) rotate(360deg) translateX(0);
+        opacity: 0;
+      }
+    }
+
+    /* Hearts */
+    .heart {
+      position: fixed;
+      pointer-events: none;
+      z-index: 1000;
+      font-size: 30px;
+      animation: heart-float ease-in-out forwards;
+    }
+
+    @keyframes heart-float {
+      0% {
+        transform: translateY(100vh) scale(0) rotate(0deg);
+        opacity: 0;
+      }
+      10% {
+        opacity: 1;
+      }
+      90% {
+        opacity: 1;
+      }
+      100% {
+        transform: translateY(-100px) scale(1.5) rotate(360deg);
+        opacity: 0;
+      }
+    }
+
+    /* Bubbles */
+    .bubble {
+      position: fixed;
+      pointer-events: none;
+      z-index: 1000;
+      background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.3));
+      border-radius: 50%;
+      animation: bubble-rise ease-in-out forwards;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+
+    @keyframes bubble-rise {
+      0% {
+        transform: translateY(100vh) translateX(0) scale(0);
+        opacity: 0;
+      }
+      10% {
+        opacity: 0.8;
+      }
+      90% {
+        opacity: 0.8;
+      }
+      100% {
+        transform: translateY(-100px) translateX(var(--drift)) scale(1);
+        opacity: 0;
+      }
+    }
+
+    /* Stars */
+    .star {
+      position: fixed;
+      pointer-events: none;
+      z-index: 1000;
+      animation: star-shoot linear forwards;
+    }
+
+    @keyframes star-shoot {
+      0% {
+        transform: translate(0, 0) rotate(-45deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translate(100vw, 100vh) rotate(-45deg);
+        opacity: 0;
+      }
+    }
+
+    .star::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100px;
+      height: 2px;
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.8));
+    }
+  </style>
+</head>
+<body>
+  <div class="content">
+    <div class="header">
+      <h1>🎨 Effects Demo Gallery</h1>
+      <p>Visualisez différents effets de particules pour votre invitation</p>
+    </div>
+
+    <div class="controls">
+      <button class="effect-button" data-effect="snow"><span>❄️ Snow</span></button>
+      <button class="effect-button" data-effect="confetti"><span>🎊 Confetti</span></button>
+      <button class="effect-button" data-effect="sakura"><span>🌸 Sakura Petals</span></button>
+      <button class="effect-button" data-effect="hearts"><span>💕 Hearts</span></button>
+      <button class="effect-button" data-effect="bubbles"><span>🫧 Bubbles</span></button>
+      <button class="effect-button" data-effect="stars"><span>⭐ Shooting Stars</span></button>
+      <button class="effect-button" data-effect="emoji"><span>🍸 Custom Emojis</span></button>
+      <button class="effect-button" data-effect="sparkles"><span>✨ Sparkles</span></button>
+      <button class="effect-button stop-all" id="stopAll"><span>🛑 Stop All</span></button>
+    </div>
+
+    <div class="info-panel">
+      <h2 id="effectTitle">Bienvenue</h2>
+      <p id="effectDescription">Cliquez sur un bouton ci-dessus pour voir l'effet en action. Vous pouvez combiner plusieurs effets ou les arrêter avec le bouton "Stop All".</p>
+      <div class="tech-specs" id="techSpecs">
+        💡 Astuce : Ces effets sont créés en pur JavaScript/CSS. Pour des effets plus avancés, consultez les bibliothèques listées ci-dessous.
+      </div>
+      <div class="links">
+        <a href="https://particles.js.org" target="_blank">tsParticles Demos →</a>
+        <a href="https://www.kirilv.com/canvas-confetti/" target="_blank">canvas-confetti Demo →</a>
+        <a href="https://timoschaefer.github.io/jQuery-Sakura/" target="_blank">Sakura.js Demo →</a>
+        <a href="https://party.js.org" target="_blank">Party.js Demos →</a>
+      </div>
+    </div>
+  </div>
+
+  <canvas id="effectCanvas"></canvas>
+
+  <script>
+    const effects = {
+      snow: null,
+      confetti: null,
+      sakura: null,
+      hearts: null,
+      bubbles: null,
+      stars: null,
+      emoji: null,
+      sparkles: null
+    };
+
+    const effectInfo = {
+      snow: {
+        title: "❄️ Snow Effect",
+        description: "Flocons de neige qui tombent doucement. Bibliothèque recommandée: SnowStorm ou tsParticles preset-snow.",
+        specs: "Taille: ~5KB | Performance: ⭐⭐⭐⭐⭐ | Personnalisation: Vitesse, densité, taille"
+      },
+      confetti: {
+        title: "🎊 Confetti Effect",
+        description: "Confettis colorés avec physique réaliste. Bibliothèque recommandée: canvas-confetti (ultra léger 2.5KB).",
+        specs: "Taille: ~2.5KB | Performance: ⭐⭐⭐⭐⭐ | Personnalisation: Couleurs, formes, gravité"
+      },
+      sakura: {
+        title: "🌸 Sakura Petals",
+        description: "Pétales de fleurs qui virevoltent. Bibliothèque recommandée: Sakura.js - parfait pour ambiance romantique/élégante.",
+        specs: "Taille: ~8KB | Performance: ⭐⭐⭐⭐ | Personnalisation: Couleurs, vent, rotation"
+      },
+      hearts: {
+        title: "💕 Floating Hearts",
+        description: "Cœurs qui montent. Idéal pour thème romantique ou Saint-Valentin.",
+        specs: "Taille: ~3KB (CSS) | Performance: ⭐⭐⭐⭐⭐ | Personnalisation: Tailles, vitesses, couleurs"
+      },
+      bubbles: {
+        title: "🫧 Champagne Bubbles",
+        description: "Bulles qui montent comme du champagne. Parfait pour fêtes et célébrations!",
+        specs: "Taille: ~4KB | Performance: ⭐⭐⭐⭐⭐ | Personnalisation: Taille, vitesse, opacité"
+      },
+      stars: {
+        title: "⭐ Shooting Stars",
+        description: "Étoiles filantes. Effet magique pour ambiance nocturne ou rêveuse.",
+        specs: "Taille: ~3KB | Performance: ⭐⭐⭐⭐ | Personnalisation: Trajectoire, vitesse, couleur"
+      },
+      emoji: {
+        title: "🍸 Custom Emojis Rain",
+        description: "N'importe quel emoji qui tombe - votre effet actuel! Recommandé: Party.js pour faciliter l'implémentation.",
+        specs: "Taille: ~4KB | Performance: ⭐⭐⭐⭐ | Personnalisation: N'importe quel emoji/image"
+      },
+      sparkles: {
+        title: "✨ Sparkles",
+        description: "Paillettes scintillantes. Effet glamour pour événements chics.",
+        specs: "Taille: ~3KB | Performance: ⭐⭐⭐⭐⭐ | Personnalisation: Couleurs, fréquence, taille"
+      }
+    };
+
+    // Snow effect
+    function createSnowflake() {
+      const snowflake = document.createElement('div');
+      snowflake.className = 'snowflake';
+      snowflake.textContent = ['❄', '❅', '❆'][Math.floor(Math.random() * 3)];
+      snowflake.style.left = Math.random() * 100 + 'vw';
+      snowflake.style.fontSize = (Math.random() * 1 + 0.5) + 'em';
+      snowflake.style.animationDuration = (Math.random() * 3 + 5) + 's';
+      document.body.appendChild(snowflake);
+      setTimeout(() => snowflake.remove(), 8000);
+    }
+
+    // Confetti effect
+    function createConfetti() {
+      const confetti = document.createElement('div');
+      confetti.className = 'confetti-piece';
+      const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#ffd93d', '#6bcf7f', '#c44569'];
+      confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      confetti.style.width = (Math.random() * 10 + 5) + 'px';
+      confetti.style.height = (Math.random() * 10 + 5) + 'px';
+      confetti.style.left = Math.random() * 100 + 'vw';
+      confetti.style.animationDuration = (Math.random() * 2 + 3) + 's';
+      document.body.appendChild(confetti);
+      setTimeout(() => confetti.remove(), 5000);
+    }
+
+    // Sakura/Petal effect
+    function createPetal() {
+      const petal = document.createElement('div');
+      petal.className = 'petal';
+      petal.textContent = '🌸';
+      petal.style.left = Math.random() * 100 + 'vw';
+      petal.style.fontSize = (Math.random() * 20 + 15) + 'px';
+      petal.style.animationDuration = (Math.random() * 5 + 8) + 's';
+      document.body.appendChild(petal);
+      setTimeout(() => petal.remove(), 13000);
+    }
+
+    // Hearts effect
+    function createHeart() {
+      const heart = document.createElement('div');
+      heart.className = 'heart';
+      heart.textContent = ['💕', '💖', '💗', '💓', '❤️'][Math.floor(Math.random() * 5)];
+      heart.style.left = Math.random() * 100 + 'vw';
+      heart.style.animationDuration = (Math.random() * 3 + 4) + 's';
+      document.body.appendChild(heart);
+      setTimeout(() => heart.remove(), 7000);
+    }
+
+    // Bubbles effect
+    function createBubble() {
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      const size = Math.random() * 40 + 20;
+      bubble.style.width = size + 'px';
+      bubble.style.height = size + 'px';
+      bubble.style.left = Math.random() * 100 + 'vw';
+      bubble.style.setProperty('--drift', (Math.random() * 200 - 100) + 'px');
+      bubble.style.animationDuration = (Math.random() * 3 + 4) + 's';
+      document.body.appendChild(bubble);
+      setTimeout(() => bubble.remove(), 7000);
+    }
+
+    // Star effect
+    function createStar() {
+      const star = document.createElement('div');
+      star.className = 'star';
+      star.textContent = '⭐';
+      star.style.left = Math.random() * 50 + 'vw';
+      star.style.top = Math.random() * 30 + 'vh';
+      star.style.fontSize = (Math.random() * 10 + 10) + 'px';
+      star.style.animationDuration = (Math.random() * 1 + 1.5) + 's';
+      document.body.appendChild(star);
+      setTimeout(() => star.remove(), 2500);
+    }
+
+    // Custom emoji rain (like your current effect)
+    function createEmojiRain() {
+      const emojis = ['🍸', '🥂', '🍾', '💃', '🎉', '🪩', '🎵', '🍹'];
+      const emoji = document.createElement('div');
+      emoji.className = 'snowflake'; // Reuse snow animation
+      emoji.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      emoji.style.left = Math.random() * 100 + 'vw';
+      emoji.style.fontSize = (Math.random() * 30 + 30) + 'px';
+      emoji.style.animationDuration = (Math.random() * 4 + 4) + 's';
+      document.body.appendChild(emoji);
+      setTimeout(() => emoji.remove(), 8000);
+    }
+
+    // Sparkles effect
+    function createSparkle() {
+      const sparkle = document.createElement('div');
+      sparkle.className = 'snowflake';
+      sparkle.textContent = '✨';
+      sparkle.style.left = Math.random() * 100 + 'vw';
+      sparkle.style.fontSize = (Math.random() * 15 + 10) + 'px';
+      sparkle.style.animationDuration = (Math.random() * 2 + 2) + 's';
+      document.body.appendChild(sparkle);
+      setTimeout(() => sparkle.remove(), 4000);
+    }
+
+    const effectFunctions = {
+      snow: createSnowflake,
+      confetti: createConfetti,
+      sakura: createPetal,
+      hearts: createHeart,
+      bubbles: createBubble,
+      stars: createStar,
+      emoji: createEmojiRain,
+      sparkles: createSparkle
+    };
+
+    // Button event listeners
+    document.querySelectorAll('.effect-button[data-effect]').forEach(button => {
+      button.addEventListener('click', () => {
+        const effect = button.dataset.effect;
+
+        if (effects[effect]) {
+          // Stop effect
+          clearInterval(effects[effect]);
+          effects[effect] = null;
+          button.classList.remove('active');
+        } else {
+          // Start effect
+          effects[effect] = setInterval(effectFunctions[effect], 300);
+          button.classList.add('active');
+
+          // Update info panel
+          document.getElementById('effectTitle').textContent = effectInfo[effect].title;
+          document.getElementById('effectDescription').textContent = effectInfo[effect].description;
+          document.getElementById('techSpecs').textContent = effectInfo[effect].specs;
+        }
+      });
+    });
+
+    // Stop all effects
+    document.getElementById('stopAll').addEventListener('click', () => {
+      Object.keys(effects).forEach(effect => {
+        if (effects[effect]) {
+          clearInterval(effects[effect]);
+          effects[effect] = null;
+        }
+      });
+
+      document.querySelectorAll('.effect-button[data-effect]').forEach(button => {
+        button.classList.remove('active');
+      });
+
+      // Clear existing particles
+      document.querySelectorAll('.snowflake, .confetti-piece, .petal, .heart, .bubble, .star').forEach(el => {
+        el.remove();
+      });
+
+      // Reset info panel
+      document.getElementById('effectTitle').textContent = 'Bienvenue';
+      document.getElementById('effectDescription').textContent = 'Cliquez sur un bouton ci-dessus pour voir l\'effet en action. Vous pouvez combiner plusieurs effets ou les arrêter avec le bouton "Stop All".';
+      document.getElementById('techSpecs').textContent = '💡 Astuce : Ces effets sont créés en pur JavaScript/CSS. Pour des effets plus avancés, consultez les bibliothèques listées ci-dessous.';
+    });
+  </script>
+</body>
+</html>
